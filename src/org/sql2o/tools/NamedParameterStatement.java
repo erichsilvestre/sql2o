@@ -57,15 +57,6 @@ public class NamedParameterStatement {
         statement=connection.prepareStatement(parsedQuery);
     }
 
-
-    /**
-     * Parses a query with named parameters.  The parameter-index mappings are put into the map, and the
-     * parsed query is returned.  DO NOT CALL FROM CLIENT CODE.  This method is non-private so JUnit code can
-     * testSelect it.
-     * @param query    query to parse
-     * @param paramMap map to hold parameter-index mappings
-     * @return the parsed query
-     */
     private static final String parse(String query, Map paramMap) {
         // I was originally using regular expressions, but they didn't work well for ignoring
         // parameter-like strings inside quotes.
@@ -108,6 +99,22 @@ public class NamedParameterStatement {
                     indexList.add(new Integer(index));
 
                     index++;
+                } else if (c=='@' && i+1<length && Character.isJavaIdentifierStart(query.charAt(i+1))){
+                    int j=i+2;
+                    while(j < length && (Character.isJavaIdentifierPart(query.charAt(j)) || query.charAt(j) == '.')){
+                        j++;
+                    }
+                    String complexName = query.substring(i+1, j);
+                    c = '?';
+                    i += complexName.length();
+
+                    String[] complexPath = complexName.split("\\.");
+                    if (complexPath.length != 2){
+                        throw new RuntimeException("sql2o framework only support complex types with 1 dot. Example type.field");
+                    }
+                    String typeName = complexPath[0];
+                    String fieldName = complexPath[1];
+
                 }
             }
             parsedQuery.append(c);

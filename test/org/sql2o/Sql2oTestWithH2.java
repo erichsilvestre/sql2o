@@ -1,8 +1,11 @@
 package org.sql2o;
 
+import com.sun.org.apache.bcel.internal.generic.Select;
+import junit.framework.Test;
 import junit.framework.TestCase;
 
 import javax.sound.midi.SysexMessage;
+import java.sql.Timestamp;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -14,7 +17,7 @@ import java.util.List;
  * Time: 9:25 PM
  * To change this template use File | Settings | File Templates.
  */
-public class Sql2oTest extends TestCase {
+public class Sql2oTestWithH2 extends TestCase {
 
     private String url = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1";
     private String user = "sa";
@@ -32,6 +35,7 @@ public class Sql2oTest extends TestCase {
         defaultColumnMap.put("NAME", "name");
         defaultColumnMap.put("EMAIL", "email");
         defaultColumnMap.put("TEXT", "text");
+        defaultColumnMap.put("TS", "ts");
         defaultColumnMap.put("ANUMBER", "aNumber");
         defaultColumnMap.put("ALONGNUMBER", "aLongNumber");
         sql2o.setDefaultColumnMappings(defaultColumnMap);
@@ -58,13 +62,15 @@ public class Sql2oTest extends TestCase {
     }
 
     public void testExecuteAndFetchWithNulls(){
-        String sql =
-                "create table testExecWithNullsTbl (" +
-                        "id int identity primary key, " +
-                        "text varchar(255), " +
-                        "aNumber int, " +
-                        "aLongNumber bigint)";
-        sql2o.createQuery(sql).executeUpdate();
+//        String sql =
+//                "create table testExecWithNullsTbl (" +
+//                        "id int identity primary key, " +
+//                        "text varchar(255), " +
+//                        "aNumber int, " +
+//                        "aLongNumber bigint)";
+//        sql2o.createQuery(sql).executeUpdate();
+
+        createTestTable("testExecWithNullsTbl");
 
 
         Query insQuery = sql2o.beginTransaction().createQuery("insert into testExecWithNullsTbl (text, aNumber, aLongNumber) values(:text, :number, :lnum)");
@@ -75,7 +81,7 @@ public class Sql2oTest extends TestCase {
         insQuery.addParameter("text", "some text").addParameter("number", 2311).addParameter("lnum", 12).executeUpdate();
         sql2o.commit();
 
-        List<TestEntity> fetched = sql2o.createQuery("select * from testExecWithNullsTbl").executeAndFetch(TestEntity.class);
+        List<TestEntity> fetched = sql2o.createQuery("select id,text,aNumber,aLongNumber from testExecWithNullsTbl").executeAndFetch(TestEntity.class);
 
         assertTrue(fetched.size() == 5);
         assertNull(fetched.get(2).text);
@@ -86,6 +92,27 @@ public class Sql2oTest extends TestCase {
 
         assertNull(fetched.get(2).aLongNumber);
         assertNotNull(fetched.get(3).aLongNumber);
+    }
+
+
+    public void testComplexParameters(){
+        createTestTable("complexParamsTbl");
+
+        String sql =
+            "insert into complexParamsTbl (text, aNumber, aLongNumber, time, ts)" +
+            "values (@entity.text, @entity.aNumber, @entity.aLongNumber, @entity.time, @entity.ts)";
+        TestEntity entity = new TestEntity();
+        entity.text = "some test text";
+        entity.time = new Date();
+        entity.ts  = new Timestamp(new Date().getTime());
+        entity.aNumber = 512;
+        entity.aLongNumber = 204985l;
+
+        sql2o.createQuery(sql).addParameter("entity", entity).executeUpdate();
+
+        TestEntity refetched = sql2o.createQuery("select text, aNumber, aLongNumber, time, ts from complexParamsTbl").executeAndFetchFirst(TestEntity.class);
+
+        assertEquals(entity, refetched);
     }
 
 
@@ -113,5 +140,18 @@ public class Sql2oTest extends TestCase {
         System.out.println(String.format("inserted 10000 rows into User table. Time used: %s ms", span));
 
         insertIntoUsers += 10000;
+    }
+
+    private void createTestTable(String tableName){
+
+        String sql =
+                "create table " + tableName + " (" +
+                        "id int identity primary key, " +
+                        "text varchar(255), " +
+                        "time timestamp, " +
+                        "ts timestamp, " +
+                        "aNumber int, " +
+                        "aLongNumber bigint)";
+        sql2o.createQuery(sql).executeUpdate();
     }
 }

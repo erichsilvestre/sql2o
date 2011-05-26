@@ -1,6 +1,6 @@
 package org.sql2o;
 
-import java.sql.Date;
+import java.util.Date;
 import java.sql.Timestamp;
 
 /**
@@ -42,5 +42,23 @@ public class TestEntity {
 
     public void setaNumber(Integer aNumber) {
         this.aNumber = aNumber;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null){
+            return false;
+        }
+        if (!o.getClass().equals(TestEntity.class)){
+            return false;
+        }
+
+        TestEntity other = (TestEntity) o;
+        return  this.id == other.id &&
+                this.text.equals(other.text) &&
+                this.time.equals(other.time) &&
+                this.ts.equals(other.ts) &&
+                this.aNumber.equals(other.aNumber) &&
+                this.aLongNumber.equals(other.aLongNumber);
     }
 }
